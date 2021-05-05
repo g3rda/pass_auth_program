@@ -1,4 +1,4 @@
-﻿#include "Header.h"
+﻿#include "header.h"
 
 
 // global vars
@@ -15,9 +15,100 @@ std::map<std::string, HWND> login_form, regist_form;
 std::map<std::string, HWND> changepass_form, adduser_form, blockuser_form, passreq_form;
 
 
-
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+    
+    BYTE buffer[512];
+    DWORD dwType, dwLen;
+    HKEY hkResult;
+    HCRYPTPROV hProv;
+    HCRYPTHASH hHash;
+    HCRYPTKEY hKey;
+
+    // open registry key
+    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Kostetska", 0, KEY_READ, &hkResult) != ERROR_SUCCESS) {
+        MessageBoxW(NULL, (LPCWSTR)L"The registry not found", (LPCWSTR)L"Error", MB_OK);
+        return 1;
+    }
+
+    // try to read the signature
+    if (RegQueryValueExA(hkResult, "Signature", NULL, &dwType, (LPBYTE)buffer, &dwLen) == ERROR_SUCCESS) {
+        RegCloseKey(hkResult);
+    }
+    else {
+        MessageBoxW(NULL, (LPCWSTR)L"Could not read from the registry", (LPCWSTR)L"Error", MB_OK);
+        return 1;
+    }
+
+    // if len(signature)==0 (which means that the program was installed and is running for the first time), run Setup and exit
+    if (dwLen == 0) {
+        startup("SetupProgram_v1.exe");
+        MessageBoxW(NULL, (LPCWSTR)L"We have prepared everything, you may start the program now.", (LPCWSTR)L"Message", MB_OK);
+        return 0;
+    }
+
+    // gather data for hashing
+    std::wstring data = GatherData();
+    if (data == L"error") {
+        return 1;
+    }
+
+    std::string s(data.begin(), data.end());
+    const BYTE* bytes_data = reinterpret_cast<const BYTE*>(s.c_str());
+
+
+
+    // Acquire a cryptographic provider context handle.
+    
+    if (CryptAcquireContext( &hProv, NULL, NULL, PROV_RSA_FULL, 0))    {
+        //MessageBoxA(NULL, std::string("CSP context acquired.\n").c_str(), (LPCSTR)"Error", MB_OK);
+    }  else  {
+        MessageBoxA(NULL, std::string("Error during CryptAcquireContext.").c_str(), (LPCSTR)"Error", MB_OK);
+        return 1;
+    }
+    
+    
+    // get user key 
+
+    if (CryptGetUserKey(  hProv,  AT_SIGNATURE, &hKey))  {
+        //MessageBoxA(NULL, std::string("The signature key has been acquired. \n").c_str(), (LPCSTR)"Error", MB_OK);
+    }  else  {
+        MessageBoxA(NULL, std::string("Error during CryptGetUserKey for signkey.").c_str(), (LPCSTR)"Error", MB_OK);
+        return 1;
+    }
+
+
+    // Create the hash object.
+
+    if (CryptCreateHash( hProv, CALG_MD5,  0, 0, &hHash))
+    {
+       // MessageBoxA(NULL, std::string("Hash object created. \n").c_str(), (LPCSTR)"Error", MB_OK);
+    } else {
+        MessageBoxA(NULL, std::string("Error during CryptCreateHash.").c_str(), (LPCSTR)"Error", MB_OK);
+        return 1;
+    }
+
+
+    // Compute the cryptographic hash of the buffer.
+
+    if (CryptHashData( hHash, bytes_data, s.length() + 1, 0))    {
+        //MessageBoxA(NULL, std::string("The data buffer has been hashed.\n").c_str(), (LPCSTR)"Error", MB_OK);
+    }   else   {
+        MessageBoxA(NULL, std::string("Error during CryptHashData.").c_str(), (LPCSTR)"Error", MB_OK);
+        return 1;
+    }
+
+
+    // Validate the digital signature.
+
+    if (CryptVerifySignature(hHash, buffer, dwLen,  hKey, NULL, 0)) {
+        //MessageBoxA(NULL, std::string("The signature has been verified.\n").c_str(), (LPCSTR)"Error", MB_OK);
+    } else {
+        MessageBoxA(NULL, std::string("Signature not validated!\n").c_str(), (LPCSTR)"Error", MB_OK);
+        return 1;
+    }
+
+
     // if no file with user records, create one with admin
     if (!FileExists(FILENAME)) {
         std::ofstream file(FILENAME);
@@ -106,7 +197,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // show "About" messagebox
         case BTN_ABOUT:
         {
-            int msgbox = MessageBoxW(NULL, (LPCWSTR)L"Individual task: password should contain at least one uppercase letter, one lowercase letter, and one punctuation mark.", (LPCWSTR)L"Program details", MB_OK);
+            int msgbox = MessageBoxW(NULL, (LPCWSTR)L"This program was created by Alina Kostetska (FB-83).\nIndividual task: password should contain at least one uppercase letter, one lowercase letter, and one punctuation mark.", (LPCWSTR)L"Program details", MB_OK);
             break;
         }
 

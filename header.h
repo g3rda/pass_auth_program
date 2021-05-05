@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <regex>
 #include <random>
+#include <sstream>
+#include <iomanip>
 
 // structure for storing info about user
 struct user{
@@ -48,8 +50,10 @@ void GetListViewItems(HWND hwnd, int which);
 void AddUserToListView(HWND hwnd, LVITEM LvItem, user User);
 BOOL CALLBACK HideChildWindows(HWND hwnd, LPARAM lParam);
 
-// functions for preparing needed windows and parent window menu
+// functions for preparing needed windows and parent window menu; for gathering data for checking signature
 // in file prep_functions.cpp
+void startup(LPCSTR lpApplicationName);
+std::wstring GatherData();
 void CreateWindows(HWND hwnd);
 void AddMenus(HWND hwnd);
 

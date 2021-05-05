@@ -1,5 +1,91 @@
 #include "header.h"
 
+void startup(LPCSTR lpApplicationName)
+{
+    // additional information
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+
+    // set the size of the structures
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    // start the program up
+    CreateProcessA
+    (
+        lpApplicationName,   // the path
+        NULL,                // Command line
+        NULL,                   // Process handle not inheritable
+        NULL,                   // Thread handle not inheritable
+        FALSE,                  // Set handle inheritance to FALSE
+        CREATE_NEW_CONSOLE,     // Opens file in a separate console
+        NULL,           // Use parent's environment block
+        NULL,           // Use parent's starting directory 
+        &si,            // Pointer to STARTUPINFO structure
+        &pi           // Pointer to PROCESS_INFORMATION structure
+    );
+    // Close process and thread handles.
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+}
+
+
+// gather data for hashing
+std::wstring GatherData() {
+    const int USERLEN = 30;
+    // get user name
+    TCHAR username[USERLEN + 1];
+    DWORD len = USERLEN + 1;
+    if (!GetUserName(username, &len)) {
+        return L"error";
+    }
+
+    // get computer name
+    TCHAR computername[MAX_COMPUTERNAME_LENGTH + 1];
+    len = MAX_COMPUTERNAME_LENGTH + 1;
+    if (!GetComputerName(computername, &len)) {
+        return L"error";
+    }
+
+    // get path to Windows OS folder
+    TCHAR windowsdirectory[MAX_PATH + 1];
+    len = MAX_PATH + 1;
+    if (GetWindowsDirectory(windowsdirectory, len) == 0) {
+        return L"error";
+    }
+
+    // get path to Windows system files folder
+    TCHAR systemdirectory[MAX_PATH + 1];
+    len = MAX_PATH + 1;
+    if (GetSystemDirectory(systemdirectory, len) == 0) {
+        return L"error";
+    }
+
+    // get mouse buttons number
+    int mouse_buttons = GetSystemMetrics(SM_CMOUSEBUTTONS);
+
+    // get screen height
+    int screen_height = GetSystemMetrics(SM_CYSCREEN);
+
+    // get physical memory volume
+    MEMORYSTATUS stat;
+    GlobalMemoryStatus(&stat);
+    int memory = stat.dwTotalPhys;
+
+    // get volume name
+    TCHAR volumename[MAX_PATH + 1];
+    len = MAX_PATH + 1;
+    if (GetVolumeInformation(NULL, volumename, len, NULL, NULL, NULL, NULL, NULL) == 0) {
+        return L"error";
+    }
+
+    std::wstring result = std::wstring(&username[0]) + std::wstring(&computername[0]) + std::wstring(&windowsdirectory[0]) + std::wstring(&systemdirectory[0]) + std::to_wstring(mouse_buttons) + std::to_wstring(screen_height) + std::to_wstring(memory) + std::wstring(&volumename[0]);
+
+    return result;
+}
+
 // create menu 'help' and its submenu 'about'
 void AddMenus(HWND hwnd) {
     //Create menu bar
