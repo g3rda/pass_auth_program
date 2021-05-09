@@ -1,10 +1,12 @@
 ﻿#include "header.h"
 
-
 // global vars
 HINSTANCE hInst;
 HWND login, regist, listViewOne;
+HWND passphrase;
 int showing_user;
+std::wstring FILENAME;
+std::wstring FILENAME_ENCR;
 
 std::string logged_in_user = "";
 std::map<std::string, int> suspicious_users;
@@ -17,13 +19,22 @@ std::map<std::string, HWND> changepass_form, adduser_form, blockuser_form, passr
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+    const int USERLEN = 30;
+    // get user name
+    TCHAR username[USERLEN + 1];
+    DWORD len = USERLEN + 1;
+    if (!GetUserName(username, &len)) {
+        return 1;
+    }
+    FILENAME = L"C:\\Users\\" + std::wstring(&username[0]) + L"\\AppData\\Local\\Temp\\shadow_tmp.txt";
+    FILENAME_ENCR = L"C:\\Users\\" + std::wstring(&username[0]) + L"\\Documents\\shadow.txt";
     
     BYTE buffer[512];
     DWORD dwType, dwLen;
     HKEY hkResult;
-    HCRYPTPROV hProv;
     HCRYPTHASH hHash;
     HCRYPTKEY hKey;
+    HCRYPTPROV hProv;
 
     // open registry key
     if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Kostetska", 0, KEY_READ, &hkResult) != ERROR_SUCCESS) {
@@ -107,17 +118,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         MessageBoxA(NULL, std::string("Signature not validated!\n").c_str(), (LPCSTR)"Error", MB_OK);
         return 1;
     }
-
-
-    // if no file with user records, create one with admin
-    if (!FileExists(FILENAME)) {
-        std::ofstream file(FILENAME);
-        file << "admin:*:1:0\n";
-        file.close();
-    }
-
-    // get existing entries from the file
-    entries = GetEntriesFromFile(FILENAME);
+       
     
     showing_user = 0;
 
@@ -159,6 +160,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     HDC hdcStatic = NULL;
+    
 
     // always display menu
     DisplayMenu();
@@ -167,12 +169,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
-        // after creation, add menu to the parent window and create needed child windows
-        AddMenus(hwnd);
-        CreateWindows(hwnd);
-
-        // go to home
-        SendMessage(hwnd, WM_COMMAND, BTN_HOME, lParam);
+        // ask for password phrase from admin
+        passphrase = CreateWindowEx(0, L"EDIT", 0, WS_CHILD|WS_VISIBLE, 400, 150, 150, 20, hwnd, NULL, hInst, NULL);
+        CreateWindowEx(0, L"STATIC", L"Input admin passphrase:", WS_CHILD | WS_VISIBLE, 225, 150, 300, 20, hwnd, NULL, hInst, NULL);
+        CreateWindowEx(0, L"button", L"submit", WS_CHILD | WS_VISIBLE, 440, 200, 75, 40, hwnd, (HMENU)BTN_PASSPHRASE_SUBM, hInst, NULL);
         break;
     }
     case WM_CTLCOLORSTATIC:
@@ -187,12 +187,94 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
     {
         //exit program
+        // if exists decrypted file, encrypt its content and replace with FILENAME_ENCR
+        if (FileExists(FILENAME)) {
+            std::ifstream t(FILENAME);
+            std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+            t.close();
+
+            std::string iv_e = GetRandomString(AES_BLOCK_SIZE);
+            std::string encrypted_e = AesEncrypt(fileContent, iv_e);
+
+            std::ofstream out(FILENAME_ENCR);
+            out << iv_e << encrypted_e;
+            out.close();
+
+            DeleteFile(FILENAME.c_str());
+        }
         PostQuitMessage(0);
         return 0;
     }
     case WM_COMMAND:
     {
         switch (LOWORD(wParam)) {
+         
+        // check passphrase
+        case BTN_PASSPHRASE_SUBM:
+        {
+            int lenOut;
+            char tmp[32] = { 0 };
+
+            // get username from the field
+            lenOut = GetWindowTextA(passphrase, tmp, 64);
+
+            std::ifstream infile(FILENAME_ENCR, std::ifstream::binary);
+
+            // get size of file
+            infile.seekg(0, std::ifstream::end);
+            int fsize = infile.tellg();
+            infile.seekg(0);
+
+            char* fileContentCh = new char[fsize + 1]{0};
+
+            infile.read(fileContentCh, fsize);
+            
+            std::string fileContent(fileContentCh, fsize);
+
+            delete[] fileContentCh;
+
+            // get iv and ciphertext from the file content
+            std::string iv = fileContent.substr(0, AES_BLOCK_SIZE);
+            std::string encrypted = fileContent.substr(AES_BLOCK_SIZE, fileContent.length() - AES_BLOCK_SIZE);
+
+            std::string pass = std::string(tmp);
+
+            // initialize context and hash with aesinitialization, check if len of pass > 0
+            if (AesInitialization(pass.c_str(), pass.length() + 1)) {
+                if (lenOut == 0) {
+                    MessageBoxW(NULL, (LPCWSTR)L"Enter correct passphrase or exit", (LPCWSTR)L"Error", MB_OK);
+                    break;
+                }
+                
+            }
+
+            //try decrypting
+            std::string decrypted = AesDecrypt(encrypted, iv);
+
+            // if decrypted, start program
+            if (decrypted.find("admin") != std::string::npos) {
+                std::ofstream file(FILENAME);
+                file << decrypted;
+                file.close();
+                SendMessage(hwnd, WM_COMMAND, CORRECT_PASS, lParam);
+            }
+            break;
+        }
+
+        // correct admin passphrase
+        case CORRECT_PASS:
+        {
+            // after entering correct passphrase, add menu to the parent window and create needed child windows
+            AddMenus(hwnd);
+            CreateWindows(hwnd);
+
+            // get existing entries from the file
+            entries = GetEntriesFromFile(FILENAME);
+
+            // go to home
+            SendMessage(hwnd, WM_COMMAND, BTN_HOME, lParam);
+            break;
+        }
 
         // show "About" messagebox
         case BTN_ABOUT:
@@ -222,6 +304,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (MessageBox(hwnd, L"Really quit?", L"", MB_OKCANCEL) == IDOK)
             {
+                // if exists decrypted file, encrypt its content and replace with FILENAME_ENCR 
+                if (FileExists(FILENAME)) {
+                    std::ifstream t(FILENAME);
+                    std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+                    t.close();
+
+                    std::string iv_e = GetRandomString(AES_BLOCK_SIZE);
+                    std::string encrypted_e = AesEncrypt(fileContent, iv_e);
+
+                    std::ofstream out(FILENAME_ENCR);
+                    out << iv_e << encrypted_e;
+                    out.close();
+
+                    DeleteFile(FILENAME.c_str());
+                }
                 PostQuitMessage(0);
             }
             return 0;

@@ -1,82 +1,8 @@
-#include "header.h"
-
+#include "Header.h"
 
 // global vars
 HCRYPTPROV hProv;
 HCRYPTKEY hKeyDecryptEncrypt;
-
-//create md5 hash
-std::string MakeHash(const char* data)
-{
-    HCRYPTPROV hProv = 0;
-    HCRYPTHASH hHash = 0;
-    BYTE* pbHash = NULL;
-    DWORD dwHashLen;
-
-    BYTE* pbBuffer = NULL;
-    DWORD dwCount;
-    DWORD i;
-    unsigned long bufLen = 0;
-
-    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, 0)) {
-        return "0";
-    }
-    if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash)) {
-        return "0";
-    }
-
-    bufLen = strlen(data);
-
-    pbBuffer = (BYTE*)malloc(bufLen + 1);
-    memset(pbBuffer, 0, bufLen + 1);
-
-
-
-
-    for (i = 0; i < bufLen; i++) {
-        pbBuffer[i] = (BYTE)data[i];
-    }
-
-    if (!CryptHashData(hHash, pbBuffer, bufLen, 0)) {
-        return "0";
-    }
-
-    dwCount = sizeof(DWORD);
-    if (!CryptGetHashParam(hHash, HP_HASHSIZE, (BYTE*)&dwHashLen, &dwCount, 0)) {
-        return "0";
-    }
-    if ((pbHash = (unsigned char*)malloc(dwHashLen)) == NULL) {
-        return "0";
-    }
-
-
-    memset(pbHash, 0, dwHashLen);
-
-    if (!CryptGetHashParam(hHash, HP_HASHVAL, pbHash, &dwHashLen, 0)) {
-        return "0";
-    }
-
-
-    if (hHash) CryptDestroyHash(hHash);
-    if (hProv) CryptReleaseContext(hProv, 0);
-
-    return StringToHex(std::string((char*)pbHash).substr(0, dwHashLen));
-}
-
-// convert any string to its hex representation
-std::string StringToHex(const std::string& input)
-{
-    static const char hex_digits[] = "0123456789ABCDEF";
-
-    std::string output;
-    output.reserve(input.length() * 2);
-    for (unsigned char c : input)
-    {
-        output.push_back(hex_digits[c >> 4]);
-        output.push_back(hex_digits[c & 15]);
-    }
-    return output;
-}
 
 // get random string of chars and letters of length n
 std::string GetRandomString(int n)
@@ -88,12 +14,6 @@ std::string GetRandomString(int n)
     std::shuffle(str.begin(), str.end(), generator);
 
     return str.substr(0, n);
-}
-
-// convert bool value to string
-const char* const BoolToString(bool b)
-{
-    return b ? "true" : "false";
 }
 
 
@@ -138,7 +58,8 @@ BOOL AesInitialization(const char* phrase, int phrLen) {
         //MessageBoxA(NULL, std::string("The key has been derived\n").c_str(), (LPCSTR)"Error", MB_OK);
     }
     else {
-        MessageBoxA(NULL, std::string("Error during CryptDeriveKey.").c_str(), (LPCSTR)"Error", MB_OK);
+        std::cout << GetLastError();
+        system("pause");
         return FALSE;
     }
 
@@ -148,7 +69,8 @@ BOOL AesInitialization(const char* phrase, int phrLen) {
         //MessageBoxA(NULL, std::string("Parameters for the key have been set.\n").c_str(), (LPCSTR)"Error", MB_OK);
     }
     else {
-        MessageBoxA(NULL, std::string("Error during CryptSetKeyParam.").c_str(), (LPCSTR)"Error", MB_OK);
+        std::cout << GetLastError();
+        system("pause");
         return FALSE;
     }
 
@@ -177,7 +99,7 @@ std::string AesEncrypt(std::string& data, std::string& iv)
     }
 
     if (!success) {
-        MessageBoxA(NULL, std::string("Error during encryption. Enter correct passphrase or exit.").c_str(), (LPCSTR)"Error", MB_OK);
+        MessageBoxA(NULL, std::string("Error during encryption.").c_str(), (LPCSTR)"Error", MB_OK);
         return FALSE;
     }
     return data;
@@ -194,24 +116,13 @@ std::string AesDecrypt(std::string& data, std::string& iv)
     if (success) {
         DWORD dwDataLen = data.length();
         success = CryptDecrypt(hKeyDecryptEncrypt, NULL, TRUE, 0, (BYTE*)&data[0], &dwDataLen);
-        /*void* lpBuffer;
-
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-            NULL,
-            ::GetLastError(),
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-            (LPTSTR)&lpBuffer,
-            0,
-            NULL);
-
-        MessageBox(NULL, (LPCTSTR)lpBuffer, TEXT("LastRrror"), MB_OK);
-        LocalFree(lpBuffer);*/
         data.resize(dwDataLen);  // resize to actual ciphertext length
     }
 
     if (!success) {
         MessageBoxA(NULL, std::string("Error during decryption.").c_str(), (LPCSTR)"Error", MB_OK);
-        
+       
+        return FALSE;
     }
     return data;
 }

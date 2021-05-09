@@ -1,11 +1,18 @@
-#include <windows.h>
-#include <wincrypt.h>
-#include <iostream>
-#include <string>
+#include "Header.h"
+
 
 using namespace std;
 
 const int USERLEN = 30;
+std::wstring FILENAME_ENCR;
+std::wstring FILENAME;
+
+// check if file with provided filename exists
+bool FileExists(const std::wstring& name) {
+	struct stat buffer;
+	std::string s(name.begin(), name.end());
+	return (stat(s.c_str(), &buffer) == 0);
+}
 
 // gather data about the user and computer
 wstring GatherData() {
@@ -63,6 +70,16 @@ wstring GatherData() {
 
 
 int main() {
+	const int USERLEN = 30;
+	// get user name
+	TCHAR username[USERLEN + 1];
+	DWORD len = USERLEN + 1;
+	if (!GetUserName(username, &len)) {
+		cout << "Couldn't get user name" << endl;
+		return 1;
+	}
+	FILENAME = L"C:\\Users\\" + std::wstring(&username[0]) + L"\\AppData\\Local\\Temp\\shadow_tmp.txt";
+	FILENAME_ENCR = L"C:\\Users\\" + std::wstring(&username[0]) + L"\\Documents\\shadow.txt";
 
 	// gather data for hashing
 	wstring data = GatherData();
@@ -76,7 +93,6 @@ int main() {
 	HCRYPTKEY hKey;
 	HCRYPTHASH hHash;
 	BYTE* pbSignature;
-	DWORD dwBlobLen;
 	DWORD dwSigLen = 0;
 	string s(data.begin(), data.end());
 	const BYTE* bytes_data = reinterpret_cast<const BYTE*>(s.c_str());
@@ -200,7 +216,34 @@ int main() {
 	
 	// Set value "Signature"
 	RegSetValueExA(hkResult, "Signature", 0, REG_BINARY, pbSignature, dwSigLen);
-		
+	
+	cout << "here" << endl;
+	// if no file with user records, create one with admin
+	if (!FileExists(FILENAME_ENCR)) {
+		std::ofstream file(FILENAME);
+		file << "admin:*:1:0\n";
+		file.close();
 
+
+		std::string pass;
+		cout << "Enter admin pass phrase for encryption (no spaces)" << endl;
+		cin >> pass;
+		cout << "Your passphrase is : " << pass << endl;
+
+		std::ifstream t(FILENAME);
+		std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+		t.close();
+
+		AesInitialization(pass.c_str(), pass.length() + 1);
+
+		std::string iv = GetRandomString(AES_BLOCK_SIZE);
+		std::string encrypted = AesEncrypt(fileContent, iv);
+
+		std::ofstream out(FILENAME_ENCR);
+		out << iv << encrypted;
+		out.close();
+
+	}
+	system("pause");
 	return 0;
 }

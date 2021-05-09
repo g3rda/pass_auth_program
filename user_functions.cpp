@@ -5,7 +5,7 @@
 std::string CreateNewEntry(struct user myUser) {
 
     std::string entry;
-    std::string salt = GetRandomString();
+    std::string salt = GetRandomString(4);
 
     if (myUser.password.length() != 0) {
         entry = myUser.username + ":$" + salt + "$" + MakeHash((salt + myUser.password).c_str()) + ":" + std::to_string(int((myUser.meets_req))) + ":" + std::to_string(int((myUser.is_locked)));
@@ -119,7 +119,7 @@ void ModifyEntryString(user User) {
 }
 
 // get entries from file
-std::vector<std::string> GetEntriesFromFile(std::string fileName) {
+std::vector<std::string> GetEntriesFromFile(std::wstring fileName) {
     std::vector<std::string> tmp;
     std::ifstream file(fileName.c_str());
 
@@ -146,8 +146,10 @@ void DeleteUser(int ind) {
     // update entries
     entries = GetEntriesFromFile(FILENAME);
     
+    char* str = new char[FILENAME.length()+1];
+    wcstombs(str, FILENAME.c_str(), FILENAME.length());
     //remove file with entries
-    remove(FILENAME);
+    remove(str);
 
     //add all entries to file except entry[id]
     for (int i = 0; i < entries.size(); i++) {

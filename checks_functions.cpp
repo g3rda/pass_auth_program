@@ -35,10 +35,18 @@ int CredentialsMatch(user User) {
     return 0;
 }
 
+// file size
+std::ifstream::pos_type filesize(const char* filename)
+{
+    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+    return in.tellg();
+}
+
 // check if file with provided filename exists
-bool FileExists(const std::string& name) {
+bool FileExists(const std::wstring& name) {
     struct stat buffer;
-    return (stat(name.c_str(), &buffer) == 0);
+    std::string s(name.begin(), name.end());
+    return (stat(s.c_str(), &buffer) == 0);
 }
 
 // check if account for provided entry is locked

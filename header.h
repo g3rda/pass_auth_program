@@ -12,6 +12,8 @@
 #include <sstream>
 #include <iomanip>
 
+
+
 // structure for storing info about user
 struct user{
 	std::string username;
@@ -28,14 +30,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 // in file crypto_functions.cpp
 std::string MakeHash(const char* data);
 std::string StringToHex(const std::string& input);
-std::string GetRandomString();
+std::string GetRandomString(int n);
 const char* const BoolToString(bool b);
+BOOL AesInitialization(const char* phrase, int phrLen);
+std::string AesEncrypt(std::string& data, std::string& iv);
+std::string AesDecrypt(std::string& data, std::string& iv);
 
 // all kinds of checks (if password if valid, if user exists, etc)
 // in file checks_functions.cpp
+std::ifstream::pos_type filesize(const char* filename);
 int UserExists(std::string username);
 int CredentialsMatch(user User);
-bool FileExists(const std::string& name);
+bool FileExists(const std::wstring& name);
 bool AccountLocked(std::string entry);
 bool PasswordValid(user User);
 
@@ -64,18 +70,20 @@ struct user GetUser(std::string entry);
 void ProccessUsernameAndModifyEntryBool(std::map<std::string, HWND> Map, std::string option, int mode);
 void ModifyEntryBool(user User, std::string param, int lock);
 void ModifyEntryString(user User);
-std::vector<std::string> GetEntriesFromFile(std::string fileName);
+std::vector<std::string> GetEntriesFromFile(std::wstring fileName);
 bool AddEntryToFile(std::string entry);
 void DeleteUser(int ind);
 int AddSuspiciousUser(std::string username);
 
 
-#define FILENAME "shadow.txt"
 #define ICONFILENAME "file.ico"
 #define HASH_LEN 32
+#define AES_BLOCK_SIZE 16
 
 #define BTN_ABOUT 1
 #define BTN_HOME 2
+#define BTN_PASSPHRASE_SUBM 3
+#define CORRECT_PASS 4
 
 #define BTN_LOGIN 10
 #define BTN_REGISTER 11
@@ -109,7 +117,10 @@ int AddSuspiciousUser(std::string username);
 
 extern HINSTANCE hInst;
 extern HWND login, regist, listViewOne;
+extern HWND passphrase;
 extern int showing_user;
+extern std::wstring FILENAME;
+extern std::wstring FILENAME_ENCR;
 
 extern std::string logged_in_user;
 extern std::map<std::string, int> suspicious_users;

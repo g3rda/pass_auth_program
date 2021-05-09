@@ -124,6 +124,7 @@ void CreateWindows(HWND hwnd) {
     regist_form.insert(std::pair<std::string, HWND>("password_again_text", CreateWindowEx(0, L"STATIC", L"Repeat password:", WS_CHILD, 250, 250, 150, 20, hwnd, NULL, hInst, NULL)));
     regist_form.insert(std::pair<std::string, HWND>("reg_button", CreateWindowEx(0, L"button", L"register", WS_CHILD, 440, 290, 75, 40, hwnd, (HMENU)BTN_REG_SUBM, hInst, NULL)));
     regist_form.insert(std::pair<std::string, HWND>("message_text", CreateWindowEx(0, L"STATIC", L"", WS_CHILD | SS_CENTER, 650, 150, 200, 300, hwnd, NULL, hInst, NULL)));
+    
 
     logged_user_menu.insert(std::pair<std::string, HWND>("logout", CreateWindowEx(0, L"button", L"Log Out", WS_CHILD, 820, 20, 100, 40, hwnd, (HMENU)BTN_LOGOUT, hInst, NULL)));
     logged_user_menu.insert(std::pair<std::string, HWND>("chpass", CreateWindowEx(0, L"button", L"Change Password", WS_CHILD, 650, 20, 150, 40, hwnd, (HMENU)BTN_CHPASS, hInst, NULL)));
@@ -151,8 +152,8 @@ void CreateWindows(HWND hwnd) {
     passreq_form.insert(std::pair<std::string, HWND>("unblock_button", CreateWindowEx(0, L"button", L"disable", WS_CHILD, 490, 240, 75, 40, hwnd, (HMENU)BTN_DISPASSREQ_SUBMIT, hInst, NULL)));
     passreq_form.insert(std::pair<std::string, HWND>("message_text", CreateWindowEx(0, L"STATIC", L"", WS_CHILD | SS_CENTER, 650, 150, 200, 300, hwnd, NULL, hInst, NULL)));
 
-    default_menu.insert(std::pair<std::string, HWND>("home_page", CreateWindowEx(0, L"button", L"Home", WS_CHILD | WS_VISIBLE, 675, 600, 100, 40, hwnd, (HMENU)BTN_HOME, hInst, NULL)));
-    default_menu.insert(std::pair<std::string, HWND>("exit", CreateWindowEx(0, L"button", L"Exit", WS_CHILD | WS_VISIBLE, 800, 600, 100, 40, hwnd, (HMENU)WM_CLOSE, hInst, NULL)));
+    default_menu.insert(std::pair<std::string, HWND>("home_page", CreateWindowEx(0, L"button", L"Home", WS_CHILD | WS_VISIBLE, 820, 450, 100, 40, hwnd, (HMENU)BTN_HOME, hInst, NULL)));
+    default_menu.insert(std::pair<std::string, HWND>("exit", CreateWindowEx(0, L"button", L"Exit", WS_CHILD | WS_VISIBLE, 820, 500, 100, 40, hwnd, (HMENU)WM_CLOSE, hInst, NULL)));
 
     changepass_form.insert(std::pair<std::string, HWND>("curpass_field", CreateWindowEx(0, L"EDIT", 0, WS_CHILD | ES_PASSWORD, 400, 150, 150, 20, hwnd, NULL, hInst, NULL)));
     changepass_form.insert(std::pair<std::string, HWND>("pass_field", CreateWindowEx(0, L"EDIT", 0, WS_CHILD | ES_PASSWORD, 400, 200, 150, 20, hwnd, NULL, hInst, NULL)));
